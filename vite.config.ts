@@ -5,6 +5,7 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: '/Vue3-Resource-Hub/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
