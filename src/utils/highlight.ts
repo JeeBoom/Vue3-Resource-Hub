@@ -6,8 +6,9 @@ const highlightCache = new Map<string, string>()
 export async function highlightCode(code: string, language: string = 'typescript'): Promise<string> {
   // 使用缓存避免重复高亮
   const cacheKey = `${language}:${code}`
-  if (highlightCache.has(cacheKey)) {
-    return highlightCache.get(cacheKey)!
+  const cached = highlightCache.get(cacheKey)
+  if (cached) {
+    return cached
   }
 
   try {
@@ -33,5 +34,5 @@ function escapeHtml(text: string): string {
     '"': '&quot;',
     "'": '&#039;'
   }
-  return text.replace(/[&<>"']/g, (char) => map[char])
+  return text.replace(/[&<>"']/g, (char) => map[char] || char)
 }

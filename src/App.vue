@@ -6,6 +6,7 @@ import { sections } from './data/topics'
 import type { DocNode } from './types'
 
 const expandedIds = ref<string[]>(sections.map((item) => item.id))
+const isMobileMenuOpen = ref(false)
 
 const nodeIndex = new Map<string, DocNode>()
 const buildIndex = (nodes: DocNode[]) => {
@@ -35,6 +36,8 @@ const selectedNode = computed(() => nodeIndex.get(selectedId.value))
 const handleSelect = (id: string) => {
   if (nodeIndex.has(id)) {
     selectedId.value = id
+    // 移动端选择后关闭菜单
+    isMobileMenuOpen.value = false
   }
 }
 
@@ -43,11 +46,25 @@ const handleToggle = (id: string) => {
   set.has(id) ? set.delete(id) : set.add(id)
   expandedIds.value = [...set]
 }
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
 </script>
 
 <template>
   <div class="layout">
-    <aside class="sidebar">
+    <!-- 移动端汉堡菜单按钮 -->
+    <button class="hamburger" @click="toggleMobileMenu" :class="{ active: isMobileMenuOpen }">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <!-- 遮罩层 -->
+    <div v-if="isMobileMenuOpen" class="overlay" @click="toggleMobileMenu"></div>
+
+    <aside class="sidebar" :class="{ open: isMobileMenuOpen }">
       <div class="brand">
         <p class="overline">Vue3 Knowledge Base</p>
         <h2>前端资料仓库</h2>
@@ -164,21 +181,104 @@ h2 {
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
-    padding: 12px;
+    padding: 0;
+    position: relative;
+  }
+
+  /* 汉堡菜单按钮 */
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 44px;
+    height: 44px;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1001;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .hamburger:hover {
+    background: #f5f5f5;
+  }
+
+  .hamburger span {
+    width: 100%;
+    height: 2px;
+    background: #0f0f0f;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
+  .hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+
+  .hamburger.active span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+  }
+
+  /* 遮罩层 */
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .sidebar {
-    order: 2;
-    height: auto;
-    max-height: 300px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    max-height: none;
     overflow-y: auto;
   }
 
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
   .content {
-    order: 1;
-    height: auto;
-    min-height: 60vh;
+    padding: 12px;
+    height: 100vh;
     overflow-y: auto;
+  }
+}
+
+/* 桌面端隐藏汉堡菜单和遮罩 */
+@media (min-width: 961px) {
+  .hamburger,
+  .overlay {
+    display: none;
   }
 }
 </style>
