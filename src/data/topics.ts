@@ -6956,6 +6956,130 @@ interface ImportMetaEnv {
             title: 'Vite 插件',
             summary: '常用 Vite 插件与自定义插件',
             topics: ['@vitejs/plugin-vue', 'unplugin-auto-import', 'unplugin-vue-components', 'vite-plugin-pwa', 'vite-plugin-compression', '自定义插件开发'],
+            description: 'Vite 插件系统基于 Rollup 的插件接口，提供了灵活的扩展机制。官方和社区提供了丰富的插件生态，可以处理各种资源类型、优化构建流程、增强开发体验。自定义插件可以解决项目特定的需求。',
+            useCases: [
+              '自动导入常用的 API 和组件',
+              '生成组件类型声明文件',
+              '生成 PWA 离线应用支持',
+              '自动压缩和优化资源',
+              '集成第三方构建工具和库'
+            ],
+            bestPractices: [
+              '选择维护活跃的插件',
+              '合理配置插件执行顺序',
+              '使用 vite-plugin-inspect 调试',
+              '避免在插件中执行耗时操作',
+              '为自定义插件编写完整的类型定义'
+            ],
+            codeExamples: [
+              {
+                title: 'unplugin-auto-import 自动导入',
+                language: 'typescript',
+                code: `import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    AutoImport({
+      imports: [
+        'vue',
+        'vue-router',
+        'pinia',
+        { 'axios': ['default'] }
+      ],
+      dts: 'src/auto-imports.d.ts'
+    })
+  ]
+})`
+              },
+              {
+                title: 'unplugin-vue-components 自动导入组件',
+                language: 'typescript',
+                code: `import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    Components({
+      dirs: ['src/components'],
+      resolvers: [ElementPlusResolver()],
+      dts: 'src/components.d.ts'
+    })
+  ]
+})`
+              },
+              {
+                title: 'vite-plugin-pwa PWA 配置',
+                language: 'typescript',
+                code: `import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { VitePWA } from 'vite-plugin-pwa'
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'My App',
+        short_name: 'App',
+        icons: [
+          {
+            src: '/img/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          }
+        ]
+      }
+    })
+  ]
+})`
+              },
+              {
+                title: 'vite-plugin-compression 资源压缩',
+                language: 'typescript',
+                code: `import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import viteCompression from 'vite-plugin-compression'
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 1000,
+      verbose: true
+    })
+  ]
+})`
+              },
+              {
+                title: '自定义 Vite 插件开发',
+                language: 'typescript',
+                code: `import { Plugin } from 'vite'
+
+export function customPlugin(): Plugin {
+  return {
+    name: 'custom-plugin',
+    enforceEntry: 'pre',
+    async transform(code, id) {
+      if (id.endsWith('.custom')) {
+        return {
+          code: \`export default \${JSON.stringify(code)}\`,
+          map: null
+        }
+      }
+    }
+  }
+}`
+              }
+            ],
           },
           {
             id: 'vite-optimization',
@@ -10090,24 +10214,943 @@ export function uploadFile(file: File) {
         title: '数据获取',
         summary: 'VueUse、TanStack Query、SWR',
         topics: ['@vueuse/core', 'VueQuery (TanStack)', 'SWR for Vue', '缓存策略', '乐观更新', '无限滚动', '轮询'],
+        description: '数据获取是现代 Web 应用的核心功能。VueUse 提供了响应式的网络请求封装，TanStack Query 提供了强大的数据缓存和同步机制，SWR 实现了快速渲染加载数据的模式。合理选择数据获取方案可以大幅提升应用性能和用户体验。',
+        useCases: [
+          '获取列表和分页数据',
+          '实现无限滚动加载',
+          '处理 POST/PUT/DELETE 请求',
+          '管理 API 请求的加载和错误状态',
+          '实现数据缓存和重新验证'
+        ],
+        bestPractices: [
+          '使用专门的数据获取库而非手写 Promise',
+          '合理配置缓存策略避免过度请求',
+          '实现请求去重和自动重试',
+          '提供加载和错误状态的用户反馈',
+          '考虑使用乐观更新提升 UX'
+        ],
+        codeExamples: [
+          {
+            title: 'VueUse useFetch 基础用法',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useFetch } from '@vueuse/core'
+
+// 基础用法
+const { data, pending, error, execute } = useFetch('https://api.example.com/users')
+
+// 带拦截器和配置
+const { data: posts } = useFetch(
+  'https://api.example.com/posts',
+  {
+    immediate: true, // 是否立即请求
+    refetch: true,
+    beforeFetch({ url, options, cancel }) {
+      // 添加认证 token
+      options.headers = {
+        ...options.headers,
+        'Authorization': 'Bearer token'
+      }
+      return { url, options }
+    },
+    afterFetch(ctx) {
+      // 数据转换
+      ctx.data.timestamp = new Date()
+      return ctx
+    },
+    onFetchError(ctx) {
+      console.error('Fetch error:', ctx.error)
+      return ctx
+    }
+  }
+)
+</script>
+
+<template>
+  <div>
+    <div v-if="pending">Loading...</div>
+    <div v-else-if="error">Error: {{ error.message }}</div>
+    <ul v-else>
+      <li v-for="item in data" :key="item.id">{{ item.name }}</li>
+    </ul>
+    <button @click="execute">刷新数据</button>
+  </div>
+</template>`
+          },
+          {
+            title: 'TanStack Query (Vue Query) 配置',
+            language: 'typescript',
+            code: `import { createApp } from 'vue'
+import { VueQueryPlugin } from '@tanstack/vue-query'
+import App from './App.vue'
+
+const app = createApp(App)
+
+app.use(VueQueryPlugin, {
+  queryClientConfig: {
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 分钟
+        gcTime: 1000 * 60 * 10, // 10 分钟
+        retry: 1,
+        refetchOnWindowFocus: true
+      },
+      mutations: {
+        retry: 0
+      }
+    }
+  }
+})
+
+app.mount('#app')`
+          },
+          {
+            title: 'useQuery 获取数据',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useQuery } from '@tanstack/vue-query'
+import axios from 'axios'
+
+// 定义查询函数
+const fetchUsers = async () => {
+  const { data } = await axios.get('/api/users')
+  return data
+}
+
+// 使用 useQuery
+const { data: users, isLoading, error, isFetching, refetch } = useQuery({
+  queryKey: ['users'],
+  queryFn: fetchUsers,
+  staleTime: 5 * 60 * 1000,
+  refetchInterval: 30 * 1000, // 每 30 秒自动刷新
+  enabled: true // 是否启用查询
+})
+</script>
+
+<template>
+  <div>
+    <div v-if="isLoading">Loading users...</div>
+    <div v-else-if="error">Error: {{ error.message }}</div>
+    <div v-else>
+      <ul>
+        <li v-for="user in users" :key="user.id">{{ user.name }}</li>
+      </ul>
+      <button @click="refetch">Refetch</button>
+      <span v-if="isFetching">Updating...</span>
+    </div>
+  </div>
+</template>`
+          },
+          {
+            title: 'useMutation 修改数据',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import axios from 'axios'
+import { ref } from 'vue'
+
+const queryClient = useQueryClient()
+const newUserName = ref('')
+
+// 定义修改函数
+const createUser = async (name: string) => {
+  const { data } = await axios.post('/api/users', { name })
+  return data
+}
+
+// 使用 useMutation
+const { mutate, isPending, error, isSuccess } = useMutation({
+  mutationFn: createUser,
+  onSuccess: (newUser) => {
+    // 乐观更新或重新获取数据
+    queryClient.invalidateQueries({ queryKey: ['users'] })
+    newUserName.value = ''
+  },
+  onError: (error) => {
+    console.error('Failed to create user:', error)
+  }
+})
+
+const handleCreateUser = () => {
+  mutate(newUserName.value)
+}
+</script>
+
+<template>
+  <div>
+    <input v-model="newUserName" placeholder="输入用户名" />
+    <button @click="handleCreateUser" :disabled="isPending">
+      {{ isPending ? 'Creating...' : 'Create User' }}
+    </button>
+    <div v-if="error">Error: {{ error.message }}</div>
+    <div v-if="isSuccess">User created successfully!</div>
+  </div>
+</template>`
+          },
+          {
+            title: '无限滚动加载',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useInfiniteQuery } from '@tanstack/vue-query'
+import { useIntersectionObserver } from '@vueuse/core'
+import { ref } from 'vue'
+
+const fetchPosts = async ({ pageParam = 1 }) => {
+  const { data } = await fetch(\`/api/posts?page=\${pageParam}\`).then(r => r.json())
+  return data
+}
+
+const {
+  data,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
+  status
+} = useInfiniteQuery({
+  queryKey: ['posts'],
+  queryFn: fetchPosts,
+  getNextPageParam: (lastPage, pages) => {
+    return lastPage.hasMore ? pages.length + 1 : undefined
+  }
+})
+
+// 监听最后一个元素，触发加载
+const sentinel = ref(null)
+const { isVisible } = useIntersectionObserver(sentinel, {
+  threshold: 0.1
+})
+
+const loadMore = () => {
+  if (hasNextPage.value && !isFetchingNextPage.value) {
+    fetchNextPage()
+  }
+}
+</script>
+
+<template>
+  <div>
+    <div v-if="status === 'loading'\">Loading...</div>
+    <div v-else-if="status === 'error'\">Error loading posts</div>
+    
+    <div v-else>
+      <div v-for="page in data?.pages" :key="page.id\">
+        <div v-for="post in page.items" :key="post.id\" class="post\">
+          {{ post.title }}
+        </div>
+      </div>
+      
+      <!-- 无限滚动哨兵 -->
+      <div ref="sentinel\" style="height: 100px\" />
+      
+      <button v-if="hasNextPage" @click="loadMore\" :disabled="isFetchingNextPage\">
+        {{ isFetchingNextPage ? 'Loading...' : 'Load More' }}
+      </button>
+    </div>
+  </div>
+</template>`
+          },
+          {
+            title: '轮询和自动刷新',
+            language: 'typescript',
+            code: `import { useQuery } from '@tanstack/vue-query'
+import { ref } from 'vue'
+
+// 实时轮询数据
+export function usePollingData(url: string, interval: number = 5000) {
+  const shouldPoll = ref(true)
+
+  const { data, refetch } = useQuery({
+    queryKey: [url],
+    queryFn: async () => {
+      const res = await fetch(url)
+      return res.json()
+    },
+    // 轮询配置
+    refetchInterval: shouldPoll ? interval : false,
+    refetchIntervalInBackground: true, // 后台也轮询
+    staleTime: 0, // 始终认为数据过期
+    gcTime: Infinity // 保持数据缓存
+  })
+
+  const startPolling = () => {
+    shouldPoll.value = true
+  }
+
+  const stopPolling = () => {
+    shouldPoll.value = false
+  }
+
+  return { data, refetch, startPolling, stopPolling }
+}`
+          }
+        ],
       },
       {
         id: 'graphql',
         title: 'GraphQL',
         summary: 'Apollo Client、Villus、GraphQL 查询',
         topics: ['GraphQL 基础', 'Apollo Client Vue', 'Villus', 'urql', 'Query/Mutation', 'Fragment', 'Cache 管理'],
+        description: 'GraphQL 是一种声明式数据查询语言，相比 REST API 提供了更灵活和高效的数据获取方式。Apollo Client 是最完整的 GraphQL 客户端库，提供了缓存、本地状态管理等强大功能。Villus 则是专为 Vue 3 优化的轻量级 GraphQL 客户端。',
+        useCases: [
+          '使用 GraphQL 查询获取精确数据',
+          '通过 Mutation 修改数据',
+          '实现实时订阅功能',
+          '管理复杂的数据关系',
+          '使用片段复用查询逻辑'
+        ],
+        bestPractices: [
+          '合理使用 Fragment 组织查询',
+          '配置 Apollo Cache 提升性能',
+          '使用 useQuery/useMutation hooks',
+          '实现乐观更新提升 UX',
+          '监听缓存变化手动更新'
+        ],
+        codeExamples: [
+          {
+            title: 'Apollo Client 基础配置',
+            language: 'typescript',
+            code: `import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client'
+import { createApp } from 'vue'
+import App from './App.vue'
+
+const httpLink = new HttpLink({
+  uri: 'https://api.example.com/graphql',
+  credentials: 'include'
+})
+
+const cache = new InMemoryCache()
+
+const client = new ApolloClient({
+  link: httpLink,
+  cache
+})
+
+const app = createApp(App)
+app.use(createApollo({ client }))
+app.mount('#app')`
+          },
+          {
+            title: 'GraphQL Query 查询',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useQuery, gql } from '@apollo/client'
+
+const USERS_QUERY = gql\`
+  query GetUsers {
+    users {
+      id
+      name
+      email
+      posts {
+        id
+        title
+      }
+    }
+  }
+\`
+
+const { result, loading, error } = useQuery(USERS_QUERY)
+</script>
+
+<template>
+  <div>
+    <div v-if="loading">Loading...</div>
+    <div v-else-if="error">Error: {{ error.message }}</div>
+    <div v-else>
+      <div v-for="user in result.users" :key="user.id\">
+        <h3>{{ user.name }}</h3>
+        <p>{{ user.email }}</p>
+        <ul>
+          <li v-for="post in user.posts" :key="post.id\">
+            {{ post.title }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>`
+          },
+          {
+            title: 'GraphQL Mutation 修改',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useMutation, gql } from '@apollo/client'
+import { ref } from 'vue'
+
+const CREATE_USER = gql\`
+  mutation CreateUser($name: String!, $email: String!) {
+    createUser(name: $name, email: $email) {
+      id
+      name
+      email
+    }
+  }
+\`
+
+const userName = ref('')
+const userEmail = ref('')
+
+const { mutate, loading, error } = useMutation(CREATE_USER, {
+  update(cache, { data: { createUser } }) {
+    // 手动更新缓存
+    cache.modify({
+      fields: {
+        users(existingUsers = []) {
+          return [...existingUsers, createUser]
+        }
+      }
+    })
+  }
+})
+
+const handleCreate = () => {
+  mutate({
+    variables: {
+      name: userName.value,
+      email: userEmail.value
+    }
+  })
+}
+</script>
+
+<template>
+  <form @submit.prevent="handleCreate\">
+    <input v-model="userName" placeholder="Name" />
+    <input v-model="userEmail" placeholder="Email" />
+    <button :disabled="loading\">
+      {{ loading ? 'Creating...' : 'Create' }}
+    </button>
+    <div v-if="error\">{{ error.message }}</div>
+  </form>
+</template>`
+          },
+          {
+            title: 'Villus 轻量级 GraphQL',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { useQuery } from '@villus/vue'
+import { createClient } from '@villus/core'
+
+// 创建客户端
+const client = createClient({
+  url: 'https://api.example.com/graphql'
+})
+
+const USERS_QUERY = \`
+  query GetUsers {
+    users {
+      id
+      name
+      email
+    }
+  }
+\`
+
+const { data, error, isFetching } = useQuery({
+  query: USERS_QUERY
+}, { client })
+</script>
+
+<template>
+  <div>
+    <div v-if="isFetching\">Loading...</div>
+    <div v-else-if="error\">Error: {{ error }}</div>
+    <ul v-else>
+      <li v-for="user in data?.users" :key="user.id\">
+        {{ user.name }} - {{ user.email }}
+      </li>
+    </ul>
+  </div>
+</template>`
+          }
+        ],
       },
       {
         id: 'realtime',
         title: '实时通信',
         summary: 'WebSocket、Server-Sent Events、轮询',
         topics: ['WebSocket', 'Socket.io', 'SSE Server-Sent Events', '长轮询', '心跳机制', '断线重连'],
+        description: '实时通信是现代 Web 应用的重要功能。WebSocket 提供了双向通信通道，Socket.io 在 WebSocket 基础上添加了自动降级和事件系统，SSE 则是单向推送的轻量级方案。选择合适的实时通信方案可以提升用户体验。',
+        useCases: [
+          '聊天和消息推送',
+          '实时数据更新和通知',
+          '在线协作编辑',
+          '实时监控和日志',
+          '游戏实时同步'
+        ],
+        bestPractices: [
+          '实现自动重连和心跳机制',
+          '处理消息队列和顺序问题',
+          '合理使用房间和命名空间',
+          '监控连接状态和性能',
+          '优雅处理离线场景'
+        ],
+        codeExamples: [
+          {
+            title: 'WebSocket 基础用法',
+            language: 'typescript',
+            code: `import { ref, onMounted, onUnmounted } from 'vue'
+
+export function useWebSocket(url: string) {
+  const data = ref(null)
+  const isConnected = ref(false)
+  let ws: WebSocket | null = null
+
+  const connect = () => {
+    ws = new WebSocket(url)
+    
+    ws.onopen = () => {
+      isConnected.value = true
+      console.log('Connected')
+    }
+    
+    ws.onmessage = (event) => {
+      data.value = JSON.parse(event.data)
+    }
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+    }
+    
+    ws.onclose = () => {
+      isConnected.value = false
+      // 3 秒后重连
+      setTimeout(connect, 3000)
+    }
+  }
+
+  const send = (message: any) => {
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(message))
+    }
+  }
+
+  const close = () => {
+    ws?.close()
+  }
+
+  onMounted(connect)
+  onUnmounted(close)
+
+  return { data, isConnected, send }
+}`
+          },
+          {
+            title: 'Socket.io 通信',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { io } from 'socket.io-client'
+import { ref, onMounted } from 'vue'
+
+const messages = ref<string[]>([])
+const currentMessage = ref('')
+
+const socket = io('http://localhost:3000', {
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: 5
+})
+
+socket.on('connect', () => {
+  console.log('Connected to server')
+})
+
+socket.on('message', (msg: string) => {
+  messages.value.push(msg)
+})
+
+socket.on('disconnect', () => {
+  console.log('Disconnected from server')
+})
+
+const sendMessage = () => {
+  socket.emit('message', currentMessage.value)
+  currentMessage.value = ''
+}
+
+const joinRoom = (roomId: string) => {
+  socket.emit('join-room', roomId)
+}
+
+onMounted(() => {
+  // 监听自定义事件
+  socket.on('user-joined', (username: string) => {
+    messages.value.push(\`\${username} 加入了房间\`)
+  })
+})
+</script>
+
+<template>
+  <div>
+    <input v-model="currentMessage" placeholder="输入消息" />
+    <button @click="sendMessage\">发送</button>
+    
+    <div class="messages\">
+      <div v-for="(msg, idx) in messages" :key="idx\">{{ msg }}</div>
+    </div>
+  </div>
+</template>`
+          },
+          {
+            title: 'Server-Sent Events (SSE)',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const messages = ref<string[]>([])
+let eventSource: EventSource | null = null
+
+const connectSSE = () => {
+  eventSource = new EventSource('http://localhost:3000/sse')
+  
+  // 监听 'message' 类型的事件
+  eventSource.addEventListener('message', (event) => {
+    messages.value.push(event.data)
+  })
+  
+  // 监听自定义事件类型
+  eventSource.addEventListener('notification', (event) => {
+    console.log('Notification:', event.data)
+  })
+  
+  eventSource.addEventListener('error', (event) => {
+    if (eventSource?.readyState === EventSource.CLOSED) {
+      console.log('Connection closed')
+    }
+  })
+  
+  eventSource.onerror = () => {
+    eventSource?.close()
+    // 5 秒后重连
+    setTimeout(connectSSE, 5000)
+  }
+}
+
+onMounted(connectSSE)
+
+onUnmounted(() => {
+  eventSource?.close()
+})
+</script>
+
+<template>
+  <div>
+    <h3>实时消息（SSE）</h3>
+    <div class="messages\">
+      <div v-for="(msg, idx) in messages" :key="idx\">{{ msg }}</div>
+    </div>
+  </div>
+</template>`
+          },
+          {
+            title: '心跳和重连机制',
+            language: 'typescript',
+            code: `export function useHeartbeat(socket: any, interval: number = 30000) {
+  let heartbeatTimer: any = null
+  let reconnectTimer: any = null
+  const maxReconnectAttempts = 5
+  let reconnectAttempts = 0
+
+  const startHeartbeat = () => {
+    heartbeatTimer = setInterval(() => {
+      if (socket.connected) {
+        socket.emit('heartbeat', { timestamp: Date.now() })
+      }
+    }, interval)
+  }
+
+  const stopHeartbeat = () => {
+    clearInterval(heartbeatTimer)
+  }
+
+  const handleDisconnect = () => {
+    stopHeartbeat()
+    
+    if (reconnectAttempts < maxReconnectAttempts) {
+      reconnectAttempts++
+      const delay = Math.pow(2, reconnectAttempts) * 1000
+      
+      reconnectTimer = setTimeout(() => {
+        socket.connect()
+      }, delay)
+    }
+  }
+
+  socket.on('connect', () => {
+    reconnectAttempts = 0
+    startHeartbeat()
+  })
+
+  socket.on('disconnect', handleDisconnect)
+  socket.on('heartbeat-response', (data: any) => {
+    // 收到服务器响应，连接正常
+    console.log('Heartbeat response:', data)
+  })
+
+  return { startHeartbeat, stopHeartbeat }
+}`
+          }
+        ],
       },
       {
         id: 'local-storage',
         title: '本地存储',
         summary: 'LocalStorage、IndexedDB、缓存策略',
         topics: ['LocalStorage/SessionStorage', 'IndexedDB', 'Dexie.js', 'localForage', 'Cookie', '缓存策略', '离线存储'],
+        description: '本地存储用于在浏览器端持久化数据。LocalStorage 适合简单数据，IndexedDB 用于大数据量存储，localForage 则提供了统一的 API。合理使用本地存储可以改善离线体验和应用性能。',
+        useCases: [
+          '缓存用户偏好设置',
+          '离线应用数据同步',
+          '存储大量结构化数据',
+          '实现本地数据库',
+          '减少网络请求'
+        ],
+        bestPractices: [
+          '避免存储敏感信息',
+          '合理设置过期时间',
+          '实现容量限制检查',
+          '使用加密存储敏感数据',
+          '定期清理过期数据'
+        ],
+        codeExamples: [
+          {
+            title: 'LocalStorage 封装',
+            language: 'typescript',
+            code: `export function useLocalStorage<T>(key: string, defaultValue: T) {
+  const setItem = (value: T) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error)
+    }
+  }
+
+  const getItem = (): T => {
+    try {
+      const item = localStorage.getItem(key)
+      return item ? JSON.parse(item) : defaultValue
+    } catch {
+      return defaultValue
+    }
+  }
+
+  const removeItem = () => {
+    localStorage.removeItem(key)
+  }
+
+  const clear = () => {
+    localStorage.clear()
+  }
+
+  return {
+    value: getItem(),
+    setItem,
+    getItem,
+    removeItem,
+    clear
+  }
+}`
+          },
+          {
+            title: 'LocalStorage 带过期时间',
+            language: 'typescript',
+            code: `export function useLocalStorageWithExpiry<T>(
+  key: string,
+  defaultValue: T,
+  expiryMs: number = 24 * 60 * 60 * 1000 // 默认 24 小时
+) {
+  const setItem = (value: T) => {
+    const now = new Date()
+    const item = {
+      value,
+      expiry: now.getTime() + expiryMs
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  }
+
+  const getItem = (): T | null => {
+    const item = localStorage.getItem(key)
+    if (!item) return defaultValue
+
+    try {
+      const { value, expiry } = JSON.parse(item)
+      const now = new Date()
+      
+      if (now.getTime() > expiry) {
+        localStorage.removeItem(key)
+        return defaultValue
+      }
+      
+      return value
+    } catch {
+      return defaultValue
+    }
+  }
+
+  return { getItem, setItem }
+}`
+          },
+          {
+            title: 'IndexedDB 基础操作',
+            language: 'typescript',
+            code: `export function useIndexedDB(dbName: string, storeName: string) {
+  let db: IDBDatabase | null = null
+
+  const openDB = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(dbName, 1)
+      
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        db = request.result
+        resolve(db)
+      }
+      
+      request.onupgradeneeded = (event) => {
+        const database = (event.target as IDBOpenDBRequest).result
+        if (!database.objectStoreNames.contains(storeName)) {
+          database.createObjectStore(storeName, { keyPath: 'id' })
+        }
+      }
+    })
+  }
+
+  const add = async (value: any): Promise<IDBValidKey> => {
+    if (!db) await openDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db!.transaction(storeName, 'readwrite')
+      const store = transaction.objectStore(storeName)
+      const request = store.add(value)
+      
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  const get = async (key: IDBValidKey) => {
+    if (!db) await openDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db!.transaction(storeName, 'readonly')
+      const store = transaction.objectStore(storeName)
+      const request = store.get(key)
+      
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  const getAll = async () => {
+    if (!db) await openDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db!.transaction(storeName, 'readonly')
+      const store = transaction.objectStore(storeName)
+      const request = store.getAll()
+      
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  const delete_ = async (key: IDBValidKey) => {
+    if (!db) await openDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db!.transaction(storeName, 'readwrite')
+      const store = transaction.objectStore(storeName)
+      const request = store.delete(key)
+      
+      request.onsuccess = () => resolve(undefined)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  return { openDB, add, get, getAll, delete: delete_ }
+}`
+          },
+          {
+            title: 'Dexie.js 数据库操作',
+            language: 'typescript',
+            code: `import Dexie, { type Table } from 'dexie'
+
+interface User {
+  id?: number
+  name: string
+  email: string
+  age: number
+}
+
+class AppDB extends Dexie {
+  users!: Table<User>
+
+  constructor() {
+    super('myAppDB')
+    this.version(1).stores({
+      users: '++id, email'
+    })
+  }
+}
+
+const db = new AppDB()
+
+// 使用示例
+export async function manageUsers() {
+  // 添加
+  await db.users.add({ name: 'John', email: 'john@example.com', age: 30 })
+
+  // 查询
+  const john = await db.users.where('email').equals('john@example.com').first()
+
+  // 更新
+  await db.users.update(1, { age: 31 })
+
+  // 删除
+  await db.users.delete(1)
+
+  // 批量操作
+  const allUsers = await db.users.toArray()
+  
+  // 批量添加
+  await db.users.bulkAdd([
+    { name: 'Jane', email: 'jane@example.com', age: 28 },
+    { name: 'Bob', email: 'bob@example.com', age: 35 }
+  ])
+}`
+          },
+          {
+            title: 'localForage 统一 API',
+            language: 'typescript',
+            code: `import localforage from 'localforage'
+
+// 配置
+localforage.config({
+  name: 'myApp',
+  version: 1.0,
+  storeName: 'appStore'
+})
+
+export async function useAppStorage() {
+  // 自动选择最优存储后端：IndexedDB > WebSQL > LocalStorage
+  
+  // 保存数据
+  await localforage.setItem('key', { data: 'value' })
+  
+  // 获取数据
+  const item = await localforage.getItem('key')
+  
+  // 删除数据
+  await localforage.removeItem('key')
+  
+  // 清空所有数据
+  await localforage.clear()
+  
+  // 获取长度
+  const length = await localforage.length()
+}`
+          }
+        ],
       },
     ],
   },
@@ -10510,18 +11553,679 @@ const togglePlay = () => {
         title: 'Web 安全',
         summary: 'XSS、CSRF、SQL 注入防护',
         topics: ['XSS 跨站脚本', 'CSRF 跨站请求伪造', 'SQL 注入', 'CSP 内容安全策略', 'HTTPS', 'Same-Origin Policy', 'CORS 配置'],
+        description: 'Web 安全是前端应用的重要保障。XSS 和 CSRF 是最常见的漏洞，需要通过输入验证、输出编码、token 验证等方式防护。CSP 策略可以减轻 XSS 和数据注入的风险，HTTPS 确保传输安全。',
+        useCases: [
+          '防止用户输入的恶意脚本执行',
+          '保护用户隐私和敏感信息',
+          '防止跨站请求伪造攻击',
+          '限制资源加载来源',
+          '安全的数据传输'
+        ],
+        bestPractices: [
+          '始终进行输入验证和输出编码',
+          '使用框架内置的 XSS 防护',
+          '启用 CSRF Token 验证',
+          '配置 CSP 策略限制资源',
+          '使用 HTTPS 加密传输'
+        ],
+        codeExamples: [
+          {
+            title: 'Vue 3 XSS 防护',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { ref } from 'vue'
+
+const userInput = ref('')
+const sanitizedOutput = ref('')
+
+// 方法 1：使用 v-text（自动转义）
+// 方法 2：使用 DOMPurify 库进行消毒
+import DOMPurify from 'dompurify'
+
+const sanitizeInput = (html: string) => {
+  // 移除所有脚本和危险属性
+  const clean = DOMPurify.sanitize(html, { 
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br'],
+    ALLOWED_ATTR: []
+  })
+  return clean
+}
+
+const handleInput = () => {
+  sanitizedOutput.value = sanitizeInput(userInput.value)
+}
+</script>
+
+<template>
+  <div>
+    <!-- 不安全：会执行脚本 -->
+    <!-- <div v-html="userInput"></div> -->
+    
+    <!-- 安全：自动转义 -->
+    <div v-text="userInput"></div>
+    
+    <!-- 使用 DOMPurify 消毒后再显示 -->
+    <div v-html="sanitizedOutput"></div>
+    
+    <input v-model="userInput" @input="handleInput" />
+  </div>
+</template>`
+          },
+          {
+            title: 'CSRF Token 防护',
+            language: 'typescript',
+            code: `// 获取 CSRF Token
+export async function fetchCSRFToken(): Promise<string> {
+  const response = await fetch('/api/csrf-token')
+  const { token } = await response.json()
+  return token
+}
+
+// 创建请求拦截器
+import axios from 'axios'
+
+const request = axios.create()
+
+request.interceptors.request.use(async (config) => {
+  const token = localStorage.getItem('csrf-token') || await fetchCSRFToken()
+  
+  // 在 POST/PUT/DELETE 请求中添加 CSRF Token
+  if (['post', 'put', 'delete'].includes(config.method?.toLowerCase() || '')) {
+    config.headers['X-CSRF-Token'] = token
+  }
+  
+  return config
+})
+
+export default request`
+          },
+          {
+            title: 'CSP 内容安全策略',
+            language: 'html',
+            code: `<!-- 在 HTML head 中添加 CSP 策略 -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  img-src 'self' data: https:;
+  font-src 'self' https://fonts.gstatic.com;
+  connect-src 'self' https://api.example.com;
+  frame-ancestors 'none';
+  base-uri 'self';
+  form-action 'self'
+">
+
+<!-- 或在服务器响应头中设置 -->
+<!-- Content-Security-Policy: default-src 'self'; ... -->
+
+<!-- 监听 CSP 违反事件 -->
+<script>
+document.addEventListener('securitypolicyviolation', (event) => {
+  console.error('CSP violation:', {
+    violatedDirective: event.violatedDirective,
+    blockedURI: event.blockedURI,
+    sourceFile: event.sourceFile,
+    lineNumber: event.lineNumber
+  })
+})
+</script>`
+          },
+          {
+            title: 'CORS 配置',
+            language: 'typescript',
+            code: `// Express 后端 CORS 配置
+import express from 'express'
+import cors from 'cors'
+
+const app = express()
+
+// 配置 CORS
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? 'https://example.com' 
+    : 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  credentials: true,
+  maxAge: 86400 // 24 小时
+}))
+
+// 手动设置 CORS 头
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin)
+  res.header('Access-Control-Allow-Credentials', 'true')
+  
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    res.sendStatus(200)
+  } else {
+    next()
+  }
+})`
+          },
+          {
+            title: '安全的 Cookie 配置',
+            language: 'typescript',
+            code: `// Express 中设置安全的 Cookie
+import express from 'express'
+import cookieParser from 'cookie-parser'
+
+const app = express()
+app.use(cookieParser('your-secret-key'))
+
+// 设置 Cookie
+app.get('/login', (req, res) => {
+  res.cookie('sessionId', 'token-value', {
+    httpOnly: true,      // 防止 JavaScript 访问
+    secure: true,        // 仅通过 HTTPS 传输
+    sameSite: 'strict',  // 防止 CSRF，strict|lax|none
+    maxAge: 24 * 60 * 60 * 1000,
+    domain: 'example.com',
+    path: '/'
+  })
+  
+  res.json({ message: 'Logged in' })
+})
+
+// 获取 Cookie
+app.get('/protected', (req, res) => {
+  const sessionId = req.cookies.sessionId
+  if (!sessionId) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+  res.json({ data: 'Protected data' })
+})`
+          }
+        ],
       },
       {
         id: 'authentication',
         title: '认证授权',
         summary: 'JWT、OAuth、SSO 单点登录',
         topics: ['JWT Token', 'OAuth 2.0', 'SSO 单点登录', 'Session vs Token', 'Refresh Token', '权限控制', 'RBAC 角色权限'],
+        description: 'JWT 和 OAuth 是现代应用中最常用的认证方案。JWT 无状态、易于扩展，OAuth 支持第三方登录。SSO 实现跨应用单点登录。合理配置 token 刷新机制和权限控制是应用安全的关键。',
+        useCases: [
+          '用户登录和会话管理',
+          '微服务间的身份验证',
+          '第三方应用授权',
+          '实现单点登录',
+          '细粒度权限控制'
+        ],
+        bestPractices: [
+          '使用 HTTPS 传输 token',
+          '设置合理的 token 过期时间',
+          '实现 refresh token 机制',
+          '在服务器端验证 token',
+          '使用 RBAC 进行权限管理'
+        ],
+        codeExamples: [
+          {
+            title: 'JWT 认证实现',
+            language: 'typescript',
+            code: `import jwt from 'jsonwebtoken'
+import { ref, computed } from 'vue'
+
+const SECRET_KEY = process.env.JWT_SECRET || 'secret-key'
+
+// 生成 Token
+export function generateToken(payload: any, expiresIn: string = '24h') {
+  return jwt.sign(payload, SECRET_KEY, { expiresIn })
+}
+
+// 验证 Token
+export function verifyToken(token: string) {
+  try {
+    return jwt.verify(token, SECRET_KEY)
+  } catch (error) {
+    return null
+  }
+}
+
+// Vue 3 认证 Composable
+export function useAuth() {
+  const token = ref(localStorage.getItem('token') || '')
+  const user = ref(null)
+
+  const login = async (email: string, password: string) => {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+    
+    const { token: newToken, user: userData } = await response.json()
+    token.value = newToken
+    user.value = userData
+    localStorage.setItem('token', newToken)
+  }
+
+  const logout = () => {
+    token.value = ''
+    user.value = null
+    localStorage.removeItem('token')
+  }
+
+  const isAuthenticated = computed(() => !!token.value)
+
+  return { token, user, login, logout, isAuthenticated }
+}`
+          },
+          {
+            title: 'Refresh Token 机制',
+            language: 'typescript',
+            code: `export interface TokenPair {
+  accessToken: string
+  refreshToken: string
+}
+
+// 后端：生成 token 对
+export function generateTokenPair(userId: string): TokenPair {
+  return {
+    accessToken: jwt.sign({ userId }, SECRET_KEY, { expiresIn: '15m' }),
+    refreshToken: jwt.sign({ userId, type: 'refresh' }, SECRET_KEY, { expiresIn: '7d' })
+  }
+}
+
+// 刷新 Token 端点
+app.post('/api/refresh-token', (req, res) => {
+  const { refreshToken } = req.body
+  
+  try {
+    const decoded = jwt.verify(refreshToken, SECRET_KEY)
+    const { accessToken, refreshToken: newRefreshToken } = generateTokenPair(decoded.userId)
+    res.json({ accessToken, refreshToken: newRefreshToken })
+  } catch {
+    res.status(401).json({ error: 'Invalid refresh token' })
+  }
+})
+
+// 前端：请求拦截器自动刷新 token
+import axios from 'axios'
+
+const request = axios.create()
+
+request.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      
+      try {
+        const refreshToken = localStorage.getItem('refreshToken')
+        const { data } = await axios.post('/api/refresh-token', { refreshToken })
+        
+        localStorage.setItem('accessToken', data.accessToken)
+        localStorage.setItem('refreshToken', data.refreshToken)
+        
+        originalRequest.headers.Authorization = \`Bearer \${data.accessToken}\`
+        return request(originalRequest)
+      } catch {
+        // 刷新失败，需要重新登录
+        window.location.href = '/login'
+      }
+    }
+    
+    return Promise.reject(error)
+  }
+)`
+          },
+          {
+            title: 'OAuth 2.0 登录',
+            language: 'vue',
+            code: `<script setup lang="ts">
+import { ref } from 'vue'
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const redirectUri = \`\${window.location.origin}/auth/callback\`
+
+// 生成授权 URL
+const getGoogleAuthUrl = () => {
+  const scope = encodeURIComponent('openid profile email')
+  return \`https://accounts.google.com/o/oauth2/v2/auth?
+    client_id=\${googleClientId}&
+    redirect_uri=\${redirectUri}&
+    response_type=code&
+    scope=\${scope}
+  \`
+}
+
+const handleGoogleLogin = () => {
+  window.location.href = getGoogleAuthUrl()
+}
+
+// 处理回调
+const handleCallback = async (code: string) => {
+  const response = await fetch('/api/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, redirectUri })
+  })
+  
+  const { token, user } = await response.json()
+  localStorage.setItem('token', token)
+  // 重定向到首页
+  window.location.href = '/'
+}
+</script>
+
+<template>
+  <button @click="handleGoogleLogin\">
+    使用 Google 登录
+  </button>
+</template>`
+          },
+          {
+            title: 'RBAC 权限控制',
+            language: 'typescript',
+            code: `import { computed } from 'vue'
+
+export interface User {
+  id: string
+  name: string
+  roles: string[]
+  permissions: string[]
+}
+
+// 权限检查 Composable
+export function usePermission(user: User) {
+  // 检查是否有特定角色
+  const hasRole = (role: string): boolean => {
+    return user.roles.includes(role)
+  }
+
+  // 检查是否有特定权限
+  const hasPermission = (permission: string): boolean => {
+    return user.permissions.includes(permission)
+  }
+
+  // 检查是否有多个权限中的任意一个
+  const hasAnyPermission = (permissions: string[]): boolean => {
+    return permissions.some(p => user.permissions.includes(p))
+  }
+
+  // 检查是否有所有权限
+  const hasAllPermissions = (permissions: string[]): boolean => {
+    return permissions.every(p => user.permissions.includes(p))
+  }
+
+  return {
+    hasRole,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions
+  }
+}
+
+// Vue 3 中使用
+export function useAuth() {
+  const user = ref<User>({
+    id: '123',
+    name: 'John',
+    roles: ['user', 'admin'],
+    permissions: ['read', 'write', 'delete']
+  })
+
+  const { hasPermission } = usePermission(user.value)
+
+  const canDelete = computed(() => hasPermission('delete'))
+
+  return { user, canDelete, hasPermission }
+}`
+          }
+        ],
       },
       {
         id: 'encryption',
         title: '数据加密',
         summary: '前端加密、HTTPS、敏感数据保护',
         topics: ['crypto-js', 'bcrypt.js', 'HTTPS/TLS', 'RSA/AES 加密', '敏感信息脱敏', 'Content Security Policy'],
+        description: '数据加密是保护用户隐私的重要手段。对称加密（AES）适合大数据加密，非对称加密（RSA）用于密钥交换。前端可以对敏感数据进行加密，后端验证和解密，形成完整的安全体系。',
+        useCases: [
+          '加密敏感信息（密码、身份证号）',
+          '加密本地存储的数据',
+          'API 请求参数加密',
+          '密钥安全交换',
+          '数据脱敏和隐私保护'
+        ],
+        bestPractices: [
+          '不在前端存储明文密钥',
+          '使用 HTTPS 传输加密数据',
+          '定期更新加密库版本',
+          '对敏感数据进行脱敏',
+          '实现密钥轮换机制'
+        ],
+        codeExamples: [
+          {
+            title: 'crypto-js AES 加密',
+            language: 'typescript',
+            code: `import CryptoJS from 'crypto-js'
+
+const SECRET_KEY = 'your-secret-key-32chars-long-key'
+
+// 加密
+export function encrypt(data: string): string {
+  return CryptoJS.AES.encrypt(data, SECRET_KEY).toString()
+}
+
+// 解密
+export function decrypt(encrypted: string): string {
+  const decrypted = CryptoJS.AES.decrypt(encrypted, SECRET_KEY)
+  return decrypted.toString(CryptoJS.enc.Utf8)
+}
+
+// 使用示例
+const sensitiveData = '用户隐私信息'
+const encrypted = encrypt(sensitiveData)
+console.log('Encrypted:', encrypted)
+
+const decrypted = decrypt(encrypted)
+console.log('Decrypted:', decrypted)
+
+// 更安全的方式：使用 iv 和 salt
+export function encryptWithSalt(data: string): string {
+  const salt = CryptoJS.lib.WordArray.random(128 / 8)
+  const key = CryptoJS.PBKDF2(SECRET_KEY, salt, { keySize: 256 / 32 })
+  const iv = CryptoJS.lib.WordArray.random(128 / 8)
+  
+  const encrypted = CryptoJS.AES.encrypt(data, key, { iv })
+  return salt.toString() + ':' + iv.toString() + ':' + encrypted.toString()
+}`
+          },
+          {
+            title: 'RSA 公私钥加密',
+            language: 'typescript',
+            code: `import JSEncrypt from 'jsencrypt'
+
+// 使用 JSEncrypt 库（前端 RSA 加密）
+export function useRSAEncryption(publicKey: string) {
+  const encryptor = new JSEncrypt()
+  encryptor.setPublicKey(publicKey)
+
+  const encrypt = (data: string): string => {
+    return encryptor.encrypt(data)
+  }
+
+  return { encrypt }
+}
+
+// 使用示例
+const publicKey = \`-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+-----END PUBLIC KEY-----\`
+
+const { encrypt } = useRSAEncryption(publicKey)
+
+// 加密敏感数据
+const encryptedPassword = encrypt('user-password')
+console.log('Encrypted:', encryptedPassword)
+
+// 发送到服务器
+fetch('/api/login', {
+  method: 'POST',
+  body: JSON.stringify({ password: encryptedPassword })
+})`
+          },
+          {
+            title: '敏感信息脱敏',
+            language: 'typescript',
+            code: `// 脱敏工具函数
+export const maskingUtils = {
+  // 脱敏手机号
+  phoneMasking(phone: string): string {
+    return phone.replace(/(?<=.{3}).*(?=.{4})/, '*'.repeat(4))
+    // 输入: 13800138000 => 输出: 138****8000
+  },
+
+  // 脱敏身份证
+  idCardMasking(idCard: string): string {
+    return idCard.replace(/(?<=.{6}).*(?=.{4})/, '*'.repeat(8))
+    // 输入: 110101199003071234 => 输出: 110101********1234
+  },
+
+  // 脱敏邮箱
+  emailMasking(email: string): string {
+    const [localPart, domain] = email.split('@')
+    const maskedLocal = localPart[0] + '*'.repeat(localPart.length - 2) + localPart[localPart.length - 1]
+    return maskedLocal + '@' + domain
+    // 输入: user123@example.com => 输出: u*****3@example.com
+  },
+
+  // 脱敏银行卡
+  bankCardMasking(cardNumber: string): string {
+    return cardNumber.replace(/(?<=.{4}).*(?=.{4})/, '*'.repeat(8))
+    // 输入: 6222021234567890 => 输出: 6222****7890
+  },
+
+  // 脱敏姓名
+  nameMasking(name: string): string {
+    if (name.length <= 2) return '*'.repeat(name.length)
+    return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
+    // 输入: 张三 => 输出: 张*
+  }
+}
+
+// 使用示例
+console.log(maskingUtils.phoneMasking('13800138000'))
+console.log(maskingUtils.idCardMasking('110101199003071234'))
+console.log(maskingUtils.emailMasking('user123@example.com'))`
+          },
+          {
+            title: '密码哈希和验证',
+            language: 'typescript',
+            code: `// 后端使用 bcrypt 进行密码哈希
+import bcrypt from 'bcrypt'
+
+const SALT_ROUNDS = 10
+
+// 哈希密码
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS)
+}
+
+// 验证密码
+export async function verifyPassword(
+  password: string,
+  hash: string
+): Promise<boolean> {
+  return bcrypt.compare(password, hash)
+}
+
+// 用户注册
+app.post('/api/register', async (req, res) => {
+  const { email, password } = req.body
+  
+  // 验证密码强度
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({ error: '密码太弱' })
+  }
+  
+  const hashedPassword = await hashPassword(password)
+  
+  // 保存用户
+  await User.create({ email, password: hashedPassword })
+  res.json({ message: 'User registered' })
+})
+
+// 用户登录
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body
+  const user = await User.findOne({ email })
+  
+  if (!user || !await verifyPassword(password, user.password)) {
+    return res.status(401).json({ error: '邮箱或密码错误' })
+  }
+  
+  // 生成 token
+  const token = generateToken({ userId: user.id })
+  res.json({ token, user })
+})
+
+// 检查密码强度
+function isStrongPassword(password: string): boolean {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/.test(password)
+}`
+          },
+          {
+            title: 'HTTPS 和 TLS 配置',
+            language: 'typescript',
+            code: `// Nginx HTTPS 配置
+\`\`\`nginx
+server {
+    listen 443 ssl http2;
+    server_name example.com;
+    
+    # SSL 证书配置
+    ssl_certificate /etc/ssl/certs/certificate.crt;
+    ssl_certificate_key /etc/ssl/private/private.key;
+    
+    # TLS 版本
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    
+    # HSTS 强制 HTTPS
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
+    # 其他安全头
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    location / {
+        proxy_pass http://backend;
+    }
+}
+
+# HTTP 重定向到 HTTPS
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$server_name$request_uri;
+}
+\`\`\`
+
+// Node.js 中启用 HTTPS
+\`\`\`typescript
+import https from 'https'
+import fs from 'fs'
+import express from 'express'
+
+const app = express()
+
+const options = {
+  key: fs.readFileSync('/path/to/private.key'),
+  cert: fs.readFileSync('/path/to/certificate.crt')
+}
+
+https.createServer(options, app).listen(443, () => {
+  console.log('Server running on https://localhost')
+})
+\`\`\``
+          }
+        ],
       },
     ],
   },
