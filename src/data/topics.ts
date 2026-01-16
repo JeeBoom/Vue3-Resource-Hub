@@ -112,54 +112,385 @@ const { count, double, increment } = useCounter(10)
         ],
         codeExamples: [
           {
-            title: 'ref vs reactive',
+            title: '1. Proxy vs Object.defineProperty',
+            code: `// === Vue 2 使用 Object.defineProperty ===
+// 缺点：无法监听新增属性、数组索引、删除操作
+const obj = {}
+Object.defineProperty(obj, 'count', {
+  get() { return this._count }
+  set(v) { 
+    console.log('count changed to', v)
+    this._count = v 
+  }
+})
+
+// ❌ 新增属性不会被追踪
+obj.newProp = 'hello' // 无法监听
+
+// ❌ 数组索引更新不会触发
+const arr = []
+Object.defineProperty(arr, '0', { value: 1 }) // 性能差
+
+// === Vue 3 使用 Proxy ===
+// 优点：完全拦截所有操作，性能更好
+const handler = {
+  get(target, key) {
+    console.log('Reading', key)
+    return target[key]
+  },
+  set(target, key, value) {
+    console.log('Setting', key, 'to', value)
+    target[key] = value
+    return true
+  }
+}
+
+const proxy = new Proxy({}, handler)
+
+// ✅ 新增属性被自动监听
+proxy.count = 0 // "Setting count to 0"
+
+// ✅ 数组索引无缝支持
+proxy.arr = [1, 2, 3]
+proxy.arr[0] = 999 // "Setting 0 to 999"`
+          },
+          {
+            title: '2. effect 副作用追踪',
+            code: `import { ref, effect } from 'vue'
+
+const count = ref(0)
+
+// effect 自动追踪响应式依赖
+effect(() => {
+  console.log('count is', count.value)
+  // 当 count 变化时，这个函数会自动重新运行
+})
+
+count.value = 1 // 输出: "count is 1"
+count.value = 2 // 输出: "count is 2"
+
+// 实际应用：effect 是计算属性和监听器的基础
+import { reactive } from 'vue'
+
+const state = reactive({
+  firstName: 'John',
+  lastName: 'Doe',
+  fullName: ''
+})
+
+// 使用 effect 自动更新派生状态
+effect(() => {
+  state.fullName = \`\${state.firstName} \${state.lastName}\`
+})
+
+state.firstName = 'Jane' // fullName 自动更新为 "Jane Doe"
+state.lastName = 'Smith' // fullName 自动更新为 "Jane Smith"`
+          },
+          {
+            title: '3. track/trigger 依赖收集与触发',
+            code: `import { reactive, track, trigger } from '@vue/reactivity'
+
+// === 了解内部机制 ===
+const target = { count: 0 }
+const depsMap = new WeakMap()
+
+// 创建自定义响应式系统
+function reactive(obj) {
+  return new Proxy(obj, {
+    get(target, key) {
+      // track: 收集依赖（当前 effect 依赖了这个属性）
+      track(target, 'get', key)
+      return target[key]
+    },
+    set(target, key, value) {
+      if (target[key] !== value) {
+        target[key] = value
+        // trigger: 触发更新（通知所有依赖这个属性的 effect）
+        trigger(target, 'set', key)
+      }
+      return true
+    }
+  })
+}
+
+// 实际使用中，Vue 已经处理了这些
+import { ref, effect } from 'vue'
+
+const count = ref(0)
+
+// 访问 count.value 时自动 track
+effect(() => {
+  console.log(count.value) // track: 记录了这个 effect 依赖 count
+})
+
+// 修改 count.value 时自动 trigger
+count.value++ // trigger: 通知 effect 重新执行`
+          },
+          {
+            title: '4. shallowRef/shallowReactive 浅层响应',
+            code: `import { shallowRef, shallowReactive, triggerRef } from 'vue'
+
+// === shallowRef: 只响应 .value 的变化 ===
+const state = shallowRef({
+  count: 0,
+  nested: { value: 1 }
+})
+
+// ✅ 触发更新
+state.value = { count: 10, nested: { value: 2 } }
+
+// ❌ 不会触发更新（嵌套不被追踪）
+state.value.count = 5
+
+// 需要手动触发
+state.value.nested.value = 2
+triggerRef(state) // 手动触发
+
+
+// === shallowReactive: 只响应顶层属性的变化 ===
+const data = shallowReactive({
+  x: 0,
+  nested: { y: 0 }
+})
+
+// ✅ 触发更新
+data.x = 10
+
+// ❌ 不会触发更新（嵌套不被追踪）
+data.nested.y = 5
+
+// 性能优化场景
+const largeList = shallowRef({
+  items: new Array(100000).fill(0)
+})
+
+// 只在替换整个对象时更新视图
+largeList.value = { items: newItems }`
+          },
+          {
+            title: '5. readonly/shallowReadonly 只读',
+            code: `import { readonly, shallowReadonly, reactive } from 'vue'
+
+// === readonly: 完全只读（包括嵌套） ===
+const original = reactive({
+  count: 0,
+  nested: { value: 1 }
+})
+
+const readonlyObj = readonly(original)
+
+// ❌ 尝试修改会被警告
+readonlyObj.count = 1 // [Vue warn]: Set operation on key "count" failed: target is readonly.
+
+// ✅ 但原对象仍可修改（会同步）
+original.count = 10
+console.log(readonlyObj.count) // 10
+
+
+// === shallowReadonly: 只有顶层只读 ===
+const shallowObj = shallowReadonly({
+  count: 0,
+  nested: { value: 1 }
+})
+
+// ❌ 顶层修改被阻止
+shallowObj.count = 1 // 警告
+
+// ✅ 嵌套属性可以修改
+shallowObj.nested.value = 2 // 可以
+
+// 实际应用：防止意外修改 props
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  props: {
+    list: Array
+  },
+  setup(props) {
+    const readonlyList = readonly(props.list)
+    // 现在不会意外修改 props
+    return { readonlyList }
+  }
+})`
+          },
+          {
+            title: '6. toRef/toRefs 转换为 ref',
+            code: `import { reactive, toRef, toRefs } from 'vue'
+
+// === toRef: 转换单个属性 ===
+const state = reactive({
+  count: 0,
+  name: 'Vue'
+})
+
+// 转换为 ref，保持双向绑定
+const count = toRef(state, 'count')
+
+count.value++
+console.log(state.count) // 1 - 原对象同步更新
+
+state.count = 10
+console.log(count.value) // 10 - ref 也同步更新
+
+
+// === toRefs: 转换整个对象 ===
+const { count, name } = toRefs(state)
+
+// ✅ 现在可以安全地解构，保持响应性
+count.value = 20
+console.log(state.count) // 20
+
+name.value = 'React'
+console.log(state.name) // 'React'
+
+
+// === 在组件中使用 ===
+<script setup>
+import { reactive, toRefs } from 'vue'
+
+const state = reactive({
+  title: 'My App',
+  counter: 0,
+  loading: false
+})
+
+// 解构所有响应式属性
+const { title, counter, loading } = toRefs(state)
+
+// 可以直接在模板中使用，不需要 state.xxx
+</script>
+
+<template>
+  <h1>{{ title }}</h1>
+  <p>Count: {{ counter }}</p>
+  <div v-if="loading">加载中...</div>
+</template>`
+          },
+          {
+            title: '7. markRaw/effectScope 高级用法',
+            code: `import { markRaw, reactive, effect, effectScope } from 'vue'
+
+// === markRaw: 标记对象为非响应式 ===
+const largeDOM = markRaw(document.createElement('div'))
+const data = reactive({
+  title: 'Test',
+  dom: largeDOM
+})
+
+// ✅ title 变化会触发更新
+data.title = 'New Title'
+
+// ❌ dom 不会被深度监听（性能优化）
+// 适用于：DOM 节点、第三方库实例、文件对象等
+
+// 实际场景：处理第三方库实例
+import * as THREE from 'three'
+
+const scene = markRaw(new THREE.Scene())
+const state = reactive({
+  scene,
+  lights: []
+})
+
+// scene 不会被响应式追踪，避免性能损耗
+
+
+// === effectScope: 管理 effect 作用域 ===
+const scope = effectScope()
+
+// 在作用域内创建 effect
+scope.run(() => {
+  effect(() => {
+    console.log('Effect 1')
+  })
+  
+  effect(() => {
+    console.log('Effect 2')
+  })
+})
+
+// 停止所有 effect
+scope.stop()
+
+// 应用场景：管理组合式函数的生命周期
+function useMyComposable() {
+  const scope = effectScope()
+  
+  scope.run(() => {
+    effect(() => {
+      // 监听数据
+    })
+  })
+  
+  return {
+    stop: () => scope.stop()
+  }
+}
+
+// 在组件卸载时清理
+onUnmounted(() => {
+  composable.stop()
+})`
+          },
+          {
+            title: 'ref vs reactive 完整对比',
             code: `import { ref, reactive } from 'vue'
 
-// ref 用于基本类型
+// ========== ref ==========
+// ✅ 适用于基本类型
 const count = ref(0)
-console.log(count.value) // 访问需要 .value
+const name = ref('Vue')
+const active = ref(true)
+
+// ✅ 可以包装对象（但通常用 reactive）
+const state = ref({ x: 0, y: 0 })
+
+// 访问和修改需要 .value
+console.log(count.value) // 0
 count.value++
 
-// reactive 用于对象
+
+// ========== reactive ==========
+// ✅ 仅用于对象和数组
 const state = reactive({
-  name: 'Vue',
-  version: 3
-})
-console.log(state.name) // 直接访问
-state.version++`
-          },
-          {
-            title: 'toRefs 保持响应性',
-            code: `import { reactive, toRefs } from 'vue'
-
-const state = reactive({
-  name: 'Alice',
-  age: 25
+  count: 0,
+  list: [1, 2, 3]
 })
 
-// ❌ 解构会丢失响应性
-const { name, age } = state
+// 直接访问，无需 .value
+console.log(state.count) // 0
+state.count++
+state.list.push(4)
 
-// ✅ 使用 toRefs 保持响应性
-const { name, age } = toRefs(state)
+// ❌ 不能用于基本类型（会失效）
+const reactive(0) // 不工作
 
-// 现在 name 和 age 都是 ref
-console.log(name.value) // 'Alice'`
-          },
-          {
-            title: 'shallowRef 性能优化',
-            code: `import { shallowRef, triggerRef } from 'vue'
 
-// 大型对象使用浅层响应式
-const bigData = shallowRef({
-  items: new Array(10000).fill(0).map((_, i) => ({ id: i }))
-})
+// ========== 在模板中的行为 ==========
+<script setup>
+const count = ref(0)
+const state = reactive({ x: 0 })
+</script>
 
-// 修改嵌套属性不会触发更新
-bigData.value.items[0].id = 999
+<template>
+  <!-- ref 自动解包，不需要 .value -->
+  <p>{{ count }}</p> <!-- 输出: 0 -->
+  
+  <!-- reactive 直接访问 -->
+  <p>{{ state.x }}</p> <!-- 输出: 0 -->
+</template>
 
-// 需要手动触发更新
-triggerRef(bigData)`
+
+// ========== 何时选择哪一个 ==========
+// 使用 ref：
+// - 基本类型（string, number, boolean）
+// - 需要替换整个值
+// - 需要作为函数返回值
+
+// 使用 reactive：
+// - 复杂对象结构
+// - 多个相关的属性
+// - 状态管理（Pinia）`
           }
         ],
         resources: [
