@@ -13920,4 +13920,283 @@ monitor.init()`
       },
     ],
   },
+  {
+    id: 'git-version-control',
+    title: 'Git 版本控制',
+    summary: '安装、配置、初始化、暂存提交、分支管理、SSH 连接与团队协作',
+    tags: ['git', 'github', 'workflow'],
+    children: [
+      {
+        id: 'git-installation',
+        title: 'Git 安装与环境验证',
+        summary: 'Windows 环境安装、版本检查与基础建议',
+        description: 'Git 是分布式版本控制系统，是前端工程协作的基础设施。安装完成后，建议先验证版本并检查命令是否在 PATH 中，确保在 PowerShell、CMD、VS Code 终端都可直接使用 git。',
+        topics: ['Git for Windows 安装', 'git --version', 'PATH 配置', '换行符策略'],
+        useCases: [
+          '本地项目版本追踪',
+          '与 GitHub 远程仓库协作',
+          '多分支并行开发与发布'
+        ],
+        bestPractices: [
+          '安装后第一时间执行 git --version 验证',
+          '在 Windows 环境设置 core.autocrlf true',
+          '统一团队默认分支名为 main'
+        ],
+        codeExamples: [
+          {
+            title: '安装后快速检查',
+            language: 'bash',
+            code: `git --version
+git config --global core.autocrlf true
+git config --global init.defaultBranch main
+git config --global --list`
+          }
+        ],
+        resources: [
+          { title: 'Git 官方文档', url: 'https://git-scm.com/doc' },
+          { title: 'Git 下载 (Windows)', url: 'https://git-scm.com/download/win' }
+        ]
+      },
+      {
+        id: 'git-global-config',
+        title: 'Git 全局配置',
+        summary: 'user.name、user.email、editor、line ending 等核心配置',
+        description: '全局配置用于定义提交身份与默认行为。合理配置后，提交记录可追溯，团队协作一致性更高，减少换行符和编辑器差异造成的问题。',
+        topics: ['user.name', 'user.email', 'core.editor', 'core.autocrlf', 'init.defaultBranch'],
+        useCases: [
+          '保证提交记录显示正确作者',
+          '统一跨平台换行策略',
+          '让 Git 提示编辑时使用 VS Code'
+        ],
+        bestPractices: [
+          '邮箱建议与 GitHub 账号邮箱一致',
+          '使用 git config --list --show-origin 排查配置来源',
+          '团队统一提交规范与分支命名规则'
+        ],
+        codeExamples: [
+          {
+            title: '推荐全局配置命令',
+            language: 'bash',
+            code: `git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --global core.editor "code --wait"
+git config --global core.autocrlf true
+git config --global init.defaultBranch main
+git config --global --list`
+          }
+        ]
+      },
+      {
+        id: 'git-init-and-first-commit',
+        title: '仓库初始化与首次提交',
+        summary: 'git init、.gitignore、首次 add/commit/push',
+        description: '初始化仓库后，建议先完善 .gitignore，再进行首次提交。对于 Vue3 + Vite 项目，应忽略 node_modules、dist 等构建产物与本地环境文件。',
+        topics: ['git init', '.gitignore', 'git add', 'git commit', 'git remote add'],
+        useCases: [
+          '将现有前端项目纳入版本控制',
+          '初始化团队协作仓库',
+          '发布项目首个版本'
+        ],
+        bestPractices: [
+          '首次提交前检查敏感文件是否被忽略',
+          '提交信息清晰描述变更目的',
+          '首次推送使用 -u 建立上游追踪'
+        ],
+        codeExamples: [
+          {
+            title: 'Vue3 项目初始化示例',
+            language: 'bash',
+            code: `cd E:/Coding/Vue3-Resource-Hub
+git init
+git add .
+git commit -m "chore: initial commit"
+git branch -M main
+git remote add origin git@github.com:yourname/Vue3-Resource-Hub.git
+git push -u origin main`
+          },
+          {
+            title: '.gitignore 建议',
+            language: 'gitignore',
+            code: `node_modules/
+dist/
+.vite/
+*.log
+.env.local
+.env.*.local`
+          }
+        ]
+      },
+      {
+        id: 'git-staging-and-commit',
+        title: '暂存区与提交管理',
+        summary: '工作区/暂存区/仓库三层模型与高频命令',
+        description: 'Git 的核心是快照管理。先将改动加入暂存区，再提交到本地仓库。理解 add、restore、diff、commit 的关系可以显著提升开发效率和历史可读性。',
+        topics: ['git status', 'git diff', 'git add -p', 'git restore', 'git commit --amend'],
+        useCases: [
+          '按功能粒度提交变更',
+          '拆分一次大改动为多个小提交',
+          '修正刚提交的注释或漏改文件'
+        ],
+        bestPractices: [
+          '优先小步提交，避免巨大提交包',
+          '使用 git add -p 做精细化暂存',
+          '使用 Conventional Commits 规范提交信息'
+        ],
+        codeExamples: [
+          {
+            title: '高频提交命令',
+            language: 'bash',
+            code: `git status
+git diff
+git add -p
+git commit -m "feat(sidebar): add mobile menu"
+git commit --amend -m "feat(sidebar): add mobile menu toggle"`
+          },
+          {
+            title: '取消暂存与撤销修改',
+            language: 'bash',
+            code: `git restore --staged src/App.vue
+git restore src/App.vue`
+          }
+        ]
+      },
+      {
+        id: 'git-branch-management',
+        title: '分支管理与合并策略',
+        summary: 'feature/fix/docs 分支实践与合并清理',
+        description: '分支是 Git 协作的核心机制。推荐从 main 拉取功能分支，开发完成后通过 PR 合并回主干，保持主分支稳定可发布。',
+        topics: ['git switch', 'git checkout -b', 'git merge', 'git rebase', 'git branch -d'],
+        useCases: [
+          '并行开发多个功能',
+          '隔离风险改动',
+          '代码评审后再进入主分支'
+        ],
+        bestPractices: [
+          '主分支保持可部署状态',
+          '分支命名使用 feature/*、fix/*、docs/*',
+          '合并前先同步主分支最新代码'
+        ],
+        codeExamples: [
+          {
+            title: '标准分支流程',
+            language: 'bash',
+            code: `git checkout main
+git pull
+git checkout -b feature/git-knowledge
+git add .
+git commit -m "docs(git): add git knowledge chapter"
+git push -u origin feature/git-knowledge`
+          },
+          {
+            title: '合并与清理',
+            language: 'bash',
+            code: `git checkout main
+git pull
+git merge feature/git-knowledge
+git branch -d feature/git-knowledge`
+          }
+        ]
+      },
+      {
+        id: 'git-ssh-setup',
+        title: 'SSH 链接配置（GitHub）',
+        summary: '生成密钥、ssh-agent、添加公钥、连接测试',
+        description: '使用 SSH 可以避免频繁输入用户名和口令，是长期协作最稳定的认证方式。推荐使用 Ed25519 算法，安全且性能更好。',
+        topics: ['ssh-keygen', 'ssh-agent', 'ssh-add', 'GitHub SSH Keys', 'ssh -T'],
+        useCases: [
+          '免密推送代码到 GitHub',
+          '多设备统一身份认证',
+          '更安全地进行远程操作'
+        ],
+        bestPractices: [
+          '私钥不外传，不提交到仓库',
+          '建议为私钥设置 passphrase',
+          '多账号时使用 ~/.ssh/config 管理'
+        ],
+        codeExamples: [
+          {
+            title: 'Windows PowerShell SSH 完整命令',
+            language: 'powershell',
+            code: `ssh-keygen -t ed25519 -C "you@example.com"
+Get-Service ssh-agent | Set-Service -StartupType Automatic
+Start-Service ssh-agent
+ssh-add $env:USERPROFILE/.ssh/id_ed25519
+Get-Content $env:USERPROFILE/.ssh/id_ed25519.pub
+ssh -T git@github.com`
+          },
+          {
+            title: 'SSH config 示例',
+            language: 'sshconfig',
+            code: `Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes`
+          }
+        ],
+        resources: [
+          { title: 'GitHub SSH 官方文档', url: 'https://docs.github.com/en/authentication/connecting-to-github-with-ssh' }
+        ]
+      },
+      {
+        id: 'git-team-workflow',
+        title: '前端团队协作工作流',
+        summary: '分支开发、PR 评审、合并回主干的标准流程',
+        description: '团队协作应尽量规范化。建议使用 Pull Request 驱动开发，配合提交规范、CI 检查和代码评审，确保质量可控。',
+        topics: ['Pull Request', 'Code Review', 'Conventional Commits', 'CI 检查', '发布流程'],
+        useCases: [
+          '多人同时维护前端资料仓库',
+          '避免低质量改动直接进入主干',
+          '保持提交历史可读并便于追溯'
+        ],
+        bestPractices: [
+          'PR 尽量小而可审查',
+          '描述清楚变更背景、范围和验证方式',
+          '合并前确保 build/test 通过'
+        ],
+        codeExamples: [
+          {
+            title: '每日协作命令模板',
+            language: 'bash',
+            code: `git checkout main
+git pull
+git switch -c docs/git-handbook
+# coding...
+git add .
+git commit -m "docs(git): add ssh troubleshooting"
+git push -u origin docs/git-handbook`
+          }
+        ]
+      },
+      {
+        id: 'git-troubleshooting',
+        title: '常见问题与救援命令',
+        summary: '误提交、误删除、冲突、回滚与 reflog 恢复',
+        description: 'Git 提供了完善的恢复机制。遇到问题时优先确认状态，再选择 reset、revert、stash、reflog 等命令进行修复，避免盲目强推。',
+        topics: ['git reset', 'git revert', 'git stash', 'git reflog', 'merge conflict'],
+        useCases: [
+          '撤销错误提交',
+          '临时保存未完成工作',
+          '找回误删分支或提交'
+        ],
+        bestPractices: [
+          '已推送到共享分支的错误优先用 revert',
+          'reset --hard 前先确认是否可恢复',
+          '冲突解决后重新自测关键路径'
+        ],
+        codeExamples: [
+          {
+            title: '救援命令速查',
+            language: 'bash',
+            code: `git commit --amend -m "fix: correct commit message"
+git reset --soft HEAD~1
+git revert <commit-hash>
+git stash
+git stash pop
+git reflog`
+          }
+        ]
+      }
+    ]
+  },
 ]
